@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import requests
 from rasa.utils.common import raise_warning
 from sanic import Blueprint, response
 from sanic.request import Request
