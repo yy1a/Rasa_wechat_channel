@@ -9,7 +9,7 @@
 
 ## Instructions for deployment: 
 
-1. Follow the instructions on 'https://developers.weixin.qq.com/doc/offiaccount/Getting_Started/Getting_Started_Guide.html' to setup your account. Insert your callback URL which will look like https://<YOUR_HOST>/webhooks/wechat/webhook
+1. Follow the instructions on 'https://developers.weixin.qq.com/doc/offiaccount/Getting_Started/Getting_Started_Guide.html' to setup your account. Insert your callback URL which will look like ```https://<YOUR_HOST>/webhooks/wechat/webhook```
 
 2. If your account is verified, skip this step. Updating your Rasa server IP address in rasa/core/channels/wechat_utils/rasa_server.py, 
 ```connection = http.client.HTTPConnection('Rasa server IP address at port 80')```. 
