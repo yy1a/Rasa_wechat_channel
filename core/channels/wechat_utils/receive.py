@@ -30,7 +30,7 @@ class Msg(object):
 class TextMsg(Msg):
     def __init__(self, xmlData):
         Msg.__init__(self, xmlData)
-        self.Content = xmlData.find('Content').text.encode("utf-8")
+        self.Content = xmlData.find('Content').text
 
 
 class ImageMsg(Msg):
