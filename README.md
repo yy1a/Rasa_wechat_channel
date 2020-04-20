@@ -1,4 +1,4 @@
-###Building WeChat Channel for Rasa###
+Building WeChat Channel for Rasa
 
 
 Package requirement:
@@ -18,9 +18,9 @@ Instructions for deployment:
 4. Create a credentials_wc.yml, and enter information as below:
 
 wechat:
-  verify: "token of your account"
-  secret: "AppSecret of your account"
-  customer_mode: True if your account is verified else False
+  verify: "token of your account"\n
+  secret: "AppSecret of your account"\n
+  customer_mode: True if your account is verified else False\n
 
 
 5. If your account is verified, skip this step. Otherwise, run 'nohup rasa run -p 80 &'
