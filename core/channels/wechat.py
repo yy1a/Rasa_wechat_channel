@@ -1,6 +1,8 @@
 import hashlib
 import logging
+import time
 import requests
+import json
 from rasa.utils.common import raise_warning
 from sanic import Blueprint, response
 from sanic.request import Request
@@ -14,8 +16,6 @@ from rasa.core.channels.wechat_utils.rasa_server import rasa_server
 logger = logging.getLogger(__name__)
 
 
-
-
 class MessengerBot(OutputChannel):
     """A bot that uses wechat to communicate."""
 
@@ -23,15 +23,17 @@ class MessengerBot(OutputChannel):
     def name(cls) -> Text:
         return "wechat"
 
-    def __init__(self, wechat_secret: Text) -> None:
+    def __init__(self, wechat_secret: Text, wechat_appid: Text) -> None:
         self.wechat_secret = wechat_secret
+        self.wechat_appid = wechat_appid
         self.exp_time = 0
         self.access_token = ''
         super().__init__()
 
     async def get_token(self):
         if time.time() > self.exp_time:
-            r = requests.get('https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={}'.format(self.wechat_secret))
+            r = requests.get('https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={0}&secret={1}'
+                                                                              .format(self.wechat_appid, self.wechat_secret))
             d = json.loads(r.text)
             self.access_token = d['access_token']
             self.exp_time = time.time() + d['expires_in'] - 10  
@@ -55,7 +57,7 @@ class MessengerBot(OutputChannel):
         access_token = await self.get_token()
         url = 'https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token={}'.format(access_token)
         send_response = requests.post(url,data=json.dumps(replyMsg))
-
+        
         if send_response.status_code != requests.codes.ok:
             logger.error(
                 "Error trying to send wechat messge. Response: %s",
@@ -93,13 +95,14 @@ class WechatInput(InputChannel):
 
         # pytype: disable=attribute-error
         return cls(
+            credentials.get("appid"),
             credentials.get("verify"),
             credentials.get("secret"),
             credentials.get('customer_mode')
         )
         # pytype: enable=attribute-error
 
-    def __init__(self, wechat_verify: Text, wechat_secret: Text, customer_mode: bool) -> None:
+    def __init__(self, wechat_appid: Text, wechat_verify: Text, wechat_secret: Text, customer_mode: bool) -> None:
         """Create a wechat input channel.
 
         Args:
@@ -107,6 +110,7 @@ class WechatInput(InputChannel):
                 (can be chosen by yourself on webhook creation)
             wechat_secret: wechat application secret
         """
+        self.wechat_appid = wechat_appid
         self.wechat_verify = wechat_verify
         self.wechat_secret = wechat_secret
         self.customer_mode = customer_mode
@@ -148,13 +152,13 @@ class WechatInput(InputChannel):
 
         @wechat_webhook.route("/webhook", methods=["POST"])
         async def webhook(request: Request) -> HTTPResponse:
-
             xmldata = request.body
             recMsg = parse_xml(xmldata)
             if self.customer_mode:
                 try:
                     out_channel = MessengerBot(
-                        self.wechat_secret
+                        self.wechat_secret,
+                        self.wechat_appid
                     )
 
                     user_msg = UserMessage(
@@ -185,6 +189,7 @@ class WechatInput(InputChannel):
 
             return response.text("success")
         return wechat_webhook
+
 
 
 
