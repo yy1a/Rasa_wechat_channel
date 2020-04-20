@@ -11,7 +11,6 @@ from rasa.core.channels.channel import UserMessage, OutputChannel, InputChannel
 from sanic.response import HTTPResponse
 from rasa.core.channels.wechat_utils.receive import parse_xml, Msg
 from rasa.core.channels.wechat_utils.reply import TextMsg, ImageMsg
-from rasa.core.channels.wechat_utils.rasa_server import rasa_server
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +22,18 @@ class MessengerBot(OutputChannel):
     def name(cls) -> Text:
         return "wechat"
 
-    def __init__(self, wechat_secret: Text, wechat_appid: Text) -> None:
+    def __init__(self, 
+                wechat_secret: Optional[Text] = None, 
+                wechat_appid: Optional[Text] = None, 
+                automatic_mode: Optional[bool] = False
+                ) -> None:
+                
         self.wechat_secret = wechat_secret
         self.wechat_appid = wechat_appid
         self.exp_time = 0
         self.access_token = ''
+        self.automatic_mode = automatic_mode
+        self.automatic_response = []
         super().__init__()
 
     async def get_token(self):
@@ -57,10 +63,10 @@ class MessengerBot(OutputChannel):
         access_token = await self.get_token()
         url = 'https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token={}'.format(access_token)
         send_response = requests.post(url,data=json.dumps(replyMsg))
-        
+
         if send_response.status_code != requests.codes.ok:
             logger.error(
-                "Error trying to send wechat messge. Response: %s",
+                "Error trying to send wechat message. Response: %s",
                 send_response.text,
             )
 
@@ -70,15 +76,22 @@ class MessengerBot(OutputChannel):
     ) -> None:
         """Send a message through this channel."""
         for message_part in text.strip().split("\n\n"):
-            replyMsg = self.prepare_message(recipient_id, message_part, 'Text')
-            await self.send(replyMsg)
+            if not self.automatic_mode:
+                replyMsg = self.prepare_message(recipient_id, message_part, 'Text')
+                await self.send(replyMsg)
+            else:
+                self.automatic_response.append({'Text': text})
+    
 
     async def send_image_url(
         self, recipient_id: Text, image: Text, **kwargs: Any
     ) -> None:
         """Sends an image. Default will just post the url as a string."""
-        replyMsg = self.prepare_message(recipient_id, image, 'Image')
-        await self.send(replyMsg)
+        if not self.automatic_mode:
+            replyMsg = self.prepare_message(recipient_id, image, 'Image')
+            await self.send(replyMsg)
+        else:
+            self.automatic_response.append({'Image': image})
 
 
 class WechatInput(InputChannel):
@@ -106,9 +119,11 @@ class WechatInput(InputChannel):
         """Create a wechat input channel.
 
         Args:
+            wechat_appid: wechat appid
             wechat_verify: wechat Verification string
                 (can be chosen by yourself on webhook creation)
             wechat_secret: wechat application secret
+            customer_mode: use customer to reply or not
         """
         self.wechat_appid = wechat_appid
         self.wechat_verify = wechat_verify
@@ -143,8 +158,8 @@ class WechatInput(InputChannel):
                 return response.text(echostr)
             else:
                 logger.warning(
-                "Invalid fb verify token! Make sure this matches "
-                "your webhook settings on the facebook app."
+                "Invalid wechat verify token! Make sure this matches "
+                "your webhook settings on the wechat app."
                 )
                 return response.text("failure, invalid token")
         
@@ -154,41 +169,55 @@ class WechatInput(InputChannel):
         async def webhook(request: Request) -> HTTPResponse:
             xmldata = request.body
             recMsg = parse_xml(xmldata)
-            if self.customer_mode:
-                try:
-                    out_channel = MessengerBot(
-                        self.wechat_secret,
-                        self.wechat_appid
-                    )
 
-                    user_msg = UserMessage(
-                        text=recMsg.Content,
-                        output_channel=out_channel,
-                        sender_id=recMsg.FromUserName,
-                        input_channel=self.name(),
-                    )
-                    await on_new_message(user_msg)
+            try:
+                automatic_mode = not self.customer_mode 
+            
+                out_channel = MessengerBot(
+                    self.wechat_secret,
+                    self.wechat_appid,
+                    automatic_mode
+                )
 
-                except Exception as e:
-                    logger.error(f"Exception when trying to handle message.{e}")
-                    logger.debug(e, exc_info=True)
-                    pass
-            else:
-                contents = await rasa_server(recMsg.Content)
-                toUser = recMsg.FromUserName
-                fromUser = recMsg.ToUserName
-                content = contents[0]
-                if 'text' in content:
-                    replyMsg = TextMsg(toUser, fromUser, content['text'])
-                elif 'image' in content:
-                    replyMsg = ImageMsg(toUser, fromUser, content['image'])
+                user_msg = UserMessage(
+                    text=recMsg.Content,
+                    output_channel=out_channel,
+                    sender_id=recMsg.FromUserName,
+                    input_channel=self.name(),
+                )
 
-                return response.text(replyMsg.send())
+                await on_new_message(user_msg)
+                
+                # there is no customer, so use automatic reply instead.
+                if not self.customer_mode:
+                    contents = out_channel.automatic_response
+                    if len(contents) > 1:
+                        get_val = lambda x:list(x.values())[0]
+                        joint_msg = ' '.join([get_val(x) for x in contents])
+                        content = {'Text': joint_msg}
+                    else:
+                        content = contents[0] if contents else {'Text':'Hello!'}
+        
+                    toUser = recMsg.FromUserName
+                    fromUser = recMsg.ToUserName
+                    if 'Text' in content:
+                        replyMsg = TextMsg(toUser, fromUser, content['Text'])
+                    elif 'Image' in content:
+                        replyMsg = ImageMsg(toUser, fromUser, content['Image'])
+
+                    return response.text(replyMsg.send())
 
 
-
+            except Exception as e:
+                logger.error(f"Exception when trying to handle message.{e}")
+                logger.debug(e, exc_info=True)
+                pass
+    
             return response.text("success")
         return wechat_webhook
+
+
+
 
 
 
