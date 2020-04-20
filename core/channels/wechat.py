@@ -190,10 +190,10 @@ class WechatInput(InputChannel):
                 
                 # there is no customer, so use automatic reply instead.
                 if not self.customer_mode:
-                    contents = out_channel.automatic_response
+                    contents = out_channel.automatic_response #contents = ({'Text':'some text'},{'Image':'some image url'})
                     if len(contents) > 1:
-                        get_val = lambda x:list(x.values())[0]
-                        joint_msg = ' '.join([get_val(x) for x in contents])
+                        get_val = lambda x:list(x.values())[0] #get value from {'Text': 'Some texe ot image url'}
+                        joint_msg = ' '.join([get_val(x) for x in contents]) # join all msgs together; 'Text1 Text2'
                         content = {'Text': joint_msg}
                     else:
                         content = contents[0] if contents else {'Text':'Hello!'}
