@@ -20,8 +20,9 @@ Your rasa server IP address can be found after you run 'rasa run' in terminal.
 4. Create a credentials_wc.yml, and enter information as below:
 ```
 wechat:
-  verify: "token of your account"
-  secret: "AppSecret of your account"
+  appid: "APPID"
+  verify: "Token"
+  secret: "Appsecret"
   customer_mode: True if your account is verified else False
 ```
 
