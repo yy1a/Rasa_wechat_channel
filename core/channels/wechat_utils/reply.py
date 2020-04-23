@@ -2,6 +2,8 @@
 # filename: reply.py
 import time
 import json
+from typing import Text
+
 
 class Msg(object):
     def __init__(self):
@@ -10,13 +12,14 @@ class Msg(object):
     def send(self):
         return "success"
 
+
 class TextMsg(Msg):
-    def __init__(self, toUserName, fromUserName, content):
+    def __init__(self, toUserName: Text, fromUserName: Text, content: Text):
         self.__dict = dict()
-        self.__dict['ToUserName'] = toUserName
-        self.__dict['FromUserName'] = fromUserName
-        self.__dict['CreateTime'] = int(time.time())
-        self.__dict['Content'] = content
+        self.__dict["ToUserName"] = toUserName
+        self.__dict["FromUserName"] = fromUserName
+        self.__dict["CreateTime"] = int(time.time())
+        self.__dict["Content"] = content
 
     def send(self):
         XmlForm = """
@@ -29,15 +32,15 @@ class TextMsg(Msg):
             </xml>
             """
         return XmlForm.format(**self.__dict)
-    
+
 
 class ImageMsg(Msg):
-    def __init__(self, toUserName, fromUserName, mediaId):
+    def __init__(self, toUserName: Text, fromUserName: Text, mediaId: Text):
         self.__dict = dict()
-        self.__dict['ToUserName'] = toUserName
-        self.__dict['FromUserName'] = fromUserName
-        self.__dict['CreateTime'] = int(time.time())
-        self.__dict['MediaId'] = mediaId
+        self.__dict["ToUserName"] = toUserName
+        self.__dict["FromUserName"] = fromUserName
+        self.__dict["CreateTime"] = int(time.time())
+        self.__dict["MediaId"] = mediaId
 
     def send(self):
         XmlForm = """
@@ -52,5 +55,6 @@ class ImageMsg(Msg):
             </xml>
             """
         return XmlForm.format(**self.__dict)
+
 
 
