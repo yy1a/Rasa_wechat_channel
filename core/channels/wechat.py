@@ -12,6 +12,7 @@ from sanic.response import HTTPResponse
 from rasa.core.channels.wechat_utils.receive import parse_xml, Msg
 from rasa.core.channels.wechat_utils.reply import TextMsg, ImageMsg
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -216,9 +217,5 @@ class WechatInput(InputChannel):
             return response.text("success")
 
         return wechat_webhook
-
-
-
-
 
 
